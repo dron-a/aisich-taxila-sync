@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "AISICH Taxila Sync",
+  "version": "1.0",
+  "description": "One-click sync for Taxila deadline reminders via AISICH App",
+  "permissions": [
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "https://taxila-aws.bits-pilani.ac.in/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "moodle_ua_rule",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://taxila-aws.bits-pilani.ac.in/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}
