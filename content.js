@@ -242,7 +242,7 @@ const observer = new MutationObserver(() => {
 
     try {
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       const pad = 30;
       canvas.width = (img.naturalWidth || img.width) + pad * 2;
       canvas.height = (img.naturalHeight || img.height) + pad * 2;
@@ -250,16 +250,34 @@ const observer = new MutationObserver(() => {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, pad, pad);
 
-      if (!('BarcodeDetector' in window)) {
-        throw new Error('BarcodeDetector API is not supported in this browser version.');
-      }
+      let rawUrl = null;
+
+      // 1. Try Native BarcodeDetector (Supported on macOS, Android, ChromeOS)
+      if ('BarcodeDetector' in window) {
+        try {
       const detector = new BarcodeDetector({ formats: ['qr_code'] });
       const barcodes = await detector.detect(canvas);
-      if (!barcodes.length) {
-        throw new Error('Could not detect QR code. Please ensure it has fully rendered.');
+          if (barcodes.length > 0) {
+            rawUrl = barcodes[0].rawValue;
+          }
+        } catch (detectorErr) {
+          console.warn('Native BarcodeDetector failed, falling back to jsQR:', detectorErr);
+        }
       }
 
-      const rawUrl = barcodes[0].rawValue;
+      // 2. Universal Fallback using bundled jsQR (Works on Windows, Linux, Brave, etc.)
+      if (!rawUrl && typeof jsQR !== 'undefined') {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
+        if (qrCode && qrCode.data) {
+          rawUrl = qrCode.data;
+        }
+      }
+
+      if (!rawUrl) {
+        throw new Error('Could not decode QR code. Please ensure the QR code has fully rendered.');
+      }
+
       const qrloginkey = rawUrl.match(/qrlogin=([a-f0-9]+)/)?.[1];
       const userid = parseInt(rawUrl.match(/userid=(\d+)/)?.[1], 10);
 
@@ -288,7 +306,7 @@ const observer = new MutationObserver(() => {
       showSyncModal(token, userid);
 
     } catch (err) {
-      alert('Sync Error: ' + err.message + '\n\nFix: If expired, refresh Taxila (Cmd+R) to get a new QR code.');
+      alert('Sync Error: ' + err.message + '\n\nFix: If expired, refresh Taxila (Cmd+R or Ctrl+R) to get a new QR code.');
     } finally {
       btn.disabled = false;
       btn.innerText = '⚡ Sync with Aisich';
